@@ -1,0 +1,88 @@
+#!/bin/bash
+# --------------------------------------------------
+# Laravel / PHP site setup script for Ubuntu + Nginx
+# Creates Nginx config, enables site, updates /etc/hosts
+# --------------------------------------------------
+
+set -e
+
+# --- CONFIG ---
+REAL_USER=${SUDO_USER:-$USER}
+USER_HOME=$(getent passwd "$REAL_USER" | cut -d: -f6)
+WWW_DIR="$USER_HOME/www"
+NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
+NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
+DOMAIN_SUFFIX=".test"
+PHP_VERSION=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+
+# --- CHECK ROOT PRIVILEGES ---
+if [ "$EUID" -ne 0 ]; then
+  echo "⚠️ Please run this script with sudo:"
+  echo "   sudo $0 <project-name>"
+  exit 1
+fi
+
+# --- CHECK ARGUMENT ---
+if [ -z "$1" ]; then
+  echo "Usage: sudo $0 <project-name>"
+  exit 1
+fi
+
+PROJECT_NAME=$1
+DOMAIN="${PROJECT_NAME}${DOMAIN_SUFFIX}"
+PROJECT_PATH="${WWW_DIR}/${PROJECT_NAME}"
+CONF_PATH="${NGINX_SITES_AVAILABLE}/${DOMAIN}"
+
+# --- VALIDATE PROJECT DIRECTORY ---
+if [ ! -d "$PROJECT_PATH/public" ]; then
+  echo "❌ Error: ${PROJECT_PATH}/public does not exist."
+  echo "Please make sure your project is located in ${PROJECT_PATH}."
+  exit 1
+fi
+
+# --- CREATE NGINX CONFIG ---
+echo "⚙️  Creating Nginx config for ${DOMAIN}..."
+
+cat > "$CONF_PATH" <<EOF
+server {
+    listen 80;
+    server_name ${DOMAIN};
+    root ${PROJECT_PATH}/public;
+
+    index index.php index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+# --- ENABLE SITE ---
+ln -sf "$CONF_PATH" "${NGINX_SITES_ENABLED}/${DOMAIN}"
+
+# --- UPDATE HOSTS FILE ---
+if ! grep -q "${DOMAIN}" /etc/hosts; then
+  echo "127.0.0.1 ${DOMAIN}" >> /etc/hosts
+  echo "📝 Added ${DOMAIN} to /etc/hosts"
+else
+  echo "✅ ${DOMAIN} already in /etc/hosts"
+fi
+
+# --- RELOAD NGINX ---
+nginx -t && systemctl reload nginx
+
+echo ""
+echo "🎉 Site setup complete!"
+echo "   → http://${DOMAIN}"
+echo "   Root: ${PROJECT_PATH}"
+echo ""
+
