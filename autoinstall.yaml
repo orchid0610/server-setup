@@ -47,6 +47,7 @@ autoinstall:
     - containerd.io
     - nginx
     - openssh-server
+    - spice-webdavd
     - fastfetch
     - ncurses-bin
     - ncurses-base
@@ -55,10 +56,10 @@ autoinstall:
 
   late-commands:
     # --------------------
-    # VS Code (APT)
+    # VS Code (APT) - fixed
     # --------------------
     - curtin in-target -- bash -c "curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/microsoft.gpg"
-    - curtin in-target -- bash -c "echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main' > /etc/apt/sources.list.d/vscode.list"
+    - curtin in-target -- bash -c "echo deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main | tee /etc/apt/sources.list.d/vscode.list"
 
     # --------------------
     # Node.js (NodeSource LTS)
