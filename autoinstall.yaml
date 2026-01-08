@@ -1,0 +1,106 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  locale: en_US.UTF-8
+
+  keyboard:
+    layout: us
+    variant: ""
+
+  timezone: Asia/Dhaka
+
+  identity:
+    hostname: ubuntu-desktop
+    username: orchid
+    password: "$6$hdqJEp8zaU8Ghl8J$T0DSJDVpdg7PWkbIganXNbKnusm5MHgJvAQv1sNS0Cuyqb4lT6I/nl4oftvG4QOztVs8U4TUcokq7fPE.WTf5/"
+
+  network:
+    network:
+      version: 2
+      ethernets:
+        all-en:
+          match:
+            name: en*
+          dhcp4: true
+
+  storage:
+    layout:
+      name: direct
+
+  packages:
+    - git
+    - curl
+    - wget
+    - vim
+    - build-essential
+    - unzip
+    - software-properties-common
+    - apt-transport-https
+    - ca-certificates
+    - gnupg
+    - flatpak
+    - gnome-software-plugin-flatpak
+
+  late-commands:
+    # --------------------
+    # VS Code (APT)
+    # --------------------
+    - curtin in-target -- bash -c "
+        curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
+        | gpg --dearmor > /usr/share/keyrings/microsoft.gpg
+      "
+
+    - curtin in-target -- bash -c "
+        echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] \
+        https://packages.microsoft.com/repos/code stable main' \
+        > /etc/apt/sources.list.d/vscode.list
+      "
+
+    # --------------------
+    # Node.js (NodeSource LTS)
+    # --------------------
+    - curtin in-target -- bash -c "
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+      "
+
+    # --------------------
+    # Docker (Official repo)
+    # --------------------
+    - curtin in-target -- bash -c "
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      "
+
+    - curtin in-target -- bash -c "
+        echo \
+        'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \
+        https://download.docker.com/linux/ubuntu \
+        $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable' \
+        > /etc/apt/sources.list.d/docker.list
+      "
+
+    # --------------------
+    # Install everything
+    # --------------------
+    - curtin in-target -- apt update
+    - curtin in-target -- apt install -y \
+        code \
+        nodejs \
+        docker-ce \
+        docker-ce-cli \
+        containerd.io \
+        docker-buildx-plugin \
+        docker-compose-plugin
+
+    # Docker without sudo
+    - curtin in-target -- usermod -aG docker orchid
+
+    # Enable Flathub
+    - curtin in-target -- flatpak remote-add --if-not-exists flathub \
+        https://flathub.org/repo/flathub.flatpakrepo
+
+    # Cleanup
+    - curtin in-target -- apt autoremove -y
