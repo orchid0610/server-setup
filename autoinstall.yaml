@@ -29,16 +29,27 @@ autoinstall:
       name: direct
 
   packages:
+    - build-essential
+    - cmake
+    - meson
+    - pkg-config
     - git
     - curl
-    - wget
-    - vim
-    - build-essential
-    - unzip
-    - software-properties-common
-    - apt-transport-https
-    - ca-certificates
-    - gnupg
+    - npm
+    - tree
+    - zsh
+    - zsh-autosuggestions
+    - zsh-syntax-highlighting
+    - docker-ce
+    - docker-ce-cli
+    - docker-buildx-plugin
+    - docker-compose-plugin
+    - containerd.io
+    - nginx
+    - openssh-server
+    - fastfetch
+    - ncurses-bin
+    - ncurses-base
     - flatpak
     - gnome-software-plugin-flatpak
 
@@ -46,61 +57,31 @@ autoinstall:
     # --------------------
     # VS Code (APT)
     # --------------------
-    - curtin in-target -- bash -c "
-        curl -fsSL https://packages.microsoft.com/keys/microsoft.asc \
-        | gpg --dearmor > /usr/share/keyrings/microsoft.gpg
-      "
-
-    - curtin in-target -- bash -c "
-        echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] \
-        https://packages.microsoft.com/repos/code stable main' \
-        > /etc/apt/sources.list.d/vscode.list
-      "
+    - curtin in-target -- bash -c "curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/microsoft.gpg"
+    - curtin in-target -- bash -c "echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/code stable main' > /etc/apt/sources.list.d/vscode.list"
 
     # --------------------
     # Node.js (NodeSource LTS)
     # --------------------
-    - curtin in-target -- bash -c "
-        curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-      "
+    - curtin in-target -- bash -c "curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -"
 
     # --------------------
-    # Docker (Official repo)
+    # Docker repo (fixed)
     # --------------------
-    - curtin in-target -- bash -c "
-        install -m 0755 -d /etc/apt/keyrings
-        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-        | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-        chmod a+r /etc/apt/keyrings/docker.gpg
-      "
-
-    - curtin in-target -- bash -c "
-        echo \
-        'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] \
-        https://download.docker.com/linux/ubuntu \
-        $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable' \
-        > /etc/apt/sources.list.d/docker.list
-      "
+    - curtin in-target -- bash -c "mkdir -p /etc/apt/keyrings && curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && chmod a+r /etc/apt/keyrings/docker.gpg"
+    - curtin in-target -- bash -c "echo 'deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \"$VERSION_CODENAME\") stable' > /etc/apt/sources.list.d/docker.list"
 
     # --------------------
-    # Install everything
+    # Install VS Code, Node.js, Docker, and update system
     # --------------------
     - curtin in-target -- apt update
-    - curtin in-target -- apt install -y \
-        code \
-        nodejs \
-        docker-ce \
-        docker-ce-cli \
-        containerd.io \
-        docker-buildx-plugin \
-        docker-compose-plugin
+    - curtin in-target -- apt install -y code nodejs docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
     # Docker without sudo
     - curtin in-target -- usermod -aG docker orchid
 
     # Enable Flathub
-    - curtin in-target -- flatpak remote-add --if-not-exists flathub \
-        https://flathub.org/repo/flathub.flatpakrepo
+    - curtin in-target -- flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
     # Cleanup
     - curtin in-target -- apt autoremove -y
